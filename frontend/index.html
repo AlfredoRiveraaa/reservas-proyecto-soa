@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReservaSOA — Plataforma de Reservación de Espacios</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-badge">SOA</div>
+      <div>
+        <h1>ReservaSOA</h1>
+        <p>EspacioHub • Integración de Servicios de Reservación</p>
+      </div>
+    </div>
+    <div id="user-session" class="session-box hidden">
+      <span id="session-name" class="session-name"></span>
+      <span id="session-role" class="pill pill-role"></span>
+      <button id="btn-logout" class="btn btn-outline">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="alert-banner" class="alert hidden"></div>
+
+    <!-- Sección de Autenticación -->
+    <section id="auth-section" class="auth-grid">
+      <div class="card">
+        <h2>Iniciar sesión</h2>
+        <p class="muted">Accede a través de <code>users-service</code> (JWT HS256).</p>
+        <form id="login-form" class="form">
+          <label>Correo corporativo
+            <input type="email" id="login-email" required placeholder="admin@espaciohub.com" />
+          </label>
+          <label>Contraseña
+            <input type="password" id="login-password" required placeholder="••••••••" />
+          </label>
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary">Entrar</button>
+            <button type="button" id="btn-demo-admin" class="btn btn-secondary">Demo Admin</button>
+            <button type="button" id="btn-demo-emp" class="btn btn-secondary">Demo Empleado</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Registro de nuevo usuario</h2>
+        <p class="muted">Crea una cuenta nueva persistida en <code>users.db</code>.</p>
+        <form id="register-form" class="form">
+          <label>Nombre completo
+            <input type="text" id="reg-name" required minlength="3" placeholder="María García" />
+          </label>
+          <label>Correo electrónico
+            <input type="email" id="reg-email" required placeholder="maria.garcia@espaciohub.com" />
+          </label>
+          <label>Departamento
+            <input type="text" id="reg-dept" required placeholder="Innovación" />
+          </label>
+          <label>Contraseña
+            <input type="password" id="reg-password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+          </label>
+          <button type="submit" class="btn btn-primary">Registrarme</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Panel Principal -->
+    <section id="dashboard-section" class="hidden">
+      <nav class="tabs">
+        <button class="tab active" data-tab="tab-reservations">Reservaciones (Flujo E2E)</button>
+        <button class="tab" data-tab="tab-spaces">Salas y Recursos</button>
+        <button class="tab" data-tab="tab-notifications">Confirmaciones</button>
+        <button class="tab" data-tab="tab-catalog">Catálogo SOA en Vivo</button>
+      </nav>
+
+      <!-- TAB 1: Reservaciones -->
+      <div id="tab-reservations" class="tab-panel active">
+        <div class="two-col">
+          <div class="card">
+            <h3>Nueva Reservación (Orquestación SOA)</h3>
+            <p class="muted">
+              Consume <strong>users-service</strong>, <strong>spaces-service</strong>,
+              <strong>reservations-service</strong> y <strong>notifications-service</strong>.
+            </p>
+            <form id="reservation-form" class="form">
+              <label>Sala / Espacio
+                <select id="res-space" required></select>
+              </label>
+              <label>Título de la reunión
+                <input type="text" id="res-title" required minlength="3" placeholder="Planeación Sprint SOA" />
+              </label>
+              <div class="form-row">
+                <label>Fecha
+                  <input type="date" id="res-date" required />
+                </label>
+                <label>Asistentes
+                  <input type="number" id="res-attendees" min="1" value="6" required />
+                </label>
+              </div>
+              <div class="form-row">
+                <label>Hora inicio
+                  <input type="time" id="res-start" value="10:00" required />
+                </label>
+                <label>Hora fin
+                  <input type="time" id="res-end" value="11:30" required />
+                </label>
+              </div>
+              <label>Notas adicionales
+                <input type="text" id="res-notes" placeholder="Requerimos adaptador HDMI" />
+              </label>
+              <button type="submit" class="btn btn-primary">Reservar y Confirmar</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>Trazabilidad SOA de la última operación</h3>
+            <p class="muted">Evidencia en tiempo real de las llamadas HTTP entre servicios.</p>
+            <div id="soa-trace-box" class="trace-box">
+              <p class="muted">Crea o cancela una reservación para ver los pasos orquestados aquí.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt">
+          <div class="card-header">
+            <h3>Agenda de Reservaciones</h3>
+            <button id="btn-refresh-res" class="btn btn-outline">Actualizar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Folio</th>
+                  <th>Sala</th>
+                  <th>Título</th>
+                  <th>Solicitante</th>
+                  <th>Fecha y Horario</th>
+                  <th>Asist.</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="reservations-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Salas -->
+      <div id="tab-spaces" class="tab-panel">
+        <div id="admin-space-card" class="card hidden">
+          <h3>Registrar nuevo espacio (Solo Admin)</h3>
+          <form id="space-form" class="form-grid">
+            <label>Código <input type="text" id="sp-code" required placeholder="SALA-D1" /></label>
+            <label>Nombre <input type="text" id="sp-name" required placeholder="Sala Ejecutiva Sur" /></label>
+            <label>Edificio <input type="text" id="sp-building" required placeholder="Torre Norte" /></label>
+            <label>Piso <input type="number" id="sp-floor" min="0" value="1" required /></label>
+            <label>Capacidad <input type="number" id="sp-capacity" min="1" value="10" required /></label>
+            <label>Recursos (separados por coma)
+              <input type="text" id="sp-resources" placeholder="Proyector 4K, Pizarra, Zoom Room" />
+            </label>
+            <div class="full-span">
+              <button type="submit" class="btn btn-primary">Guardar espacio</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card mt">
+          <div class="card-header">
+            <h3>Catálogo de Salas y Recursos</h3>
+            <button id="btn-refresh-spaces" class="btn btn-outline">Actualizar</button>
+          </div>
+          <div id="spaces-grid" class="spaces-grid"></div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Notificaciones -->
+      <div id="tab-notifications" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <h3>Historial de Confirmaciones y Notificaciones</h3>
+            <button id="btn-refresh-notifs" class="btn btn-outline">Actualizar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Reserva #</th>
+                  <th>Evento</th>
+                  <th>Destinatario</th>
+                  <th>Asunto</th>
+                  <th>Canal</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="notifications-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: Catálogo SOA -->
+      <div id="tab-catalog" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <h3>Catálogo Dinámico de Servicios SOA (<code>/registry/services</code>)</h3>
+            <button id="btn-refresh-catalog" class="btn btn-outline">Verificar salud</button>
+          </div>
+          <div id="catalog-grid" class="spaces-grid"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
