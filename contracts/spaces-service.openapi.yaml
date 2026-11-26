@@ -1,0 +1,460 @@
+openapi: 3.1.0
+info:
+  title: ReservaSOA — Servicio de Espacios y Recursos
+  description: Servicio SOA independiente encargado del catálogo de salas, capacidad,
+    equipamiento audiovisual y validación de disponibilidad operativa.
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      tags:
+      - Salud
+      summary: Health Check
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Check Health Get
+  /spaces:
+    get:
+      tags:
+      - Espacios
+      summary: List Spaces
+      operationId: list_spaces_spaces_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - available
+            - maintenance
+            type: string
+          - type: 'null'
+          title: Status
+      - name: min_capacity
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Min Capacity
+      - name: building
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Building
+      - name: resource
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resource
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SpaceResponse'
+                title: Response List Spaces Spaces Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Espacios
+      summary: Create Space
+      operationId: create_space_spaces_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpaceCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /spaces/{space_id}:
+    get:
+      tags:
+      - Espacios
+      summary: Get Space
+      operationId: get_space_spaces__space_id__get
+      parameters:
+      - name: space_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Space Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Espacios
+      summary: Update Space
+      operationId: update_space_spaces__space_id__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: space_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Space Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpaceUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Espacios
+      summary: Delete Space
+      operationId: delete_space_spaces__space_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: space_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Space Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /spaces/{space_id}/validate:
+    get:
+      tags:
+      - Validación SOA
+      summary: Validate Space For Booking
+      operationId: validate_space_for_booking_spaces__space_id__validate_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: space_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Space Id
+      - name: attendees
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          description: Número de asistentes requeridos
+          title: Attendees
+        description: Número de asistentes requeridos
+      - name: x-service-key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceValidationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    SpaceCreate:
+      properties:
+        code:
+          type: string
+          maxLength: 20
+          minLength: 2
+          title: Code
+          examples:
+          - SALA-A1
+        name:
+          type: string
+          maxLength: 100
+          minLength: 3
+          title: Name
+          examples:
+          - Sala Innovación Norte
+        building:
+          type: string
+          maxLength: 60
+          minLength: 2
+          title: Building
+          examples:
+          - Edificio Central
+        floor:
+          type: integer
+          maximum: 100.0
+          minimum: 0.0
+          title: Floor
+          examples:
+          - 2
+        capacity:
+          type: integer
+          maximum: 500.0
+          minimum: 1.0
+          title: Capacity
+          examples:
+          - 12
+        resources:
+          items:
+            type: string
+          type: array
+          title: Resources
+          examples:
+          - - Proyector 4K
+            - Pizarra inteligente
+            - Videoconferencia
+        status:
+          type: string
+          enum:
+          - available
+          - maintenance
+          title: Status
+          default: available
+        description:
+          type: string
+          maxLength: 300
+          title: Description
+          default: ''
+      type: object
+      required:
+      - code
+      - name
+      - building
+      - floor
+      - capacity
+      title: SpaceCreate
+    SpaceResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        code:
+          type: string
+          title: Code
+        name:
+          type: string
+          title: Name
+        building:
+          type: string
+          title: Building
+        floor:
+          type: integer
+          title: Floor
+        capacity:
+          type: integer
+          title: Capacity
+        resources:
+          items:
+            type: string
+          type: array
+          title: Resources
+        status:
+          type: string
+          enum:
+          - available
+          - maintenance
+          title: Status
+        description:
+          type: string
+          title: Description
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+      type: object
+      required:
+      - id
+      - code
+      - name
+      - building
+      - floor
+      - capacity
+      - resources
+      - status
+      - description
+      - created_at
+      - updated_at
+      title: SpaceResponse
+    SpaceUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 3
+          - type: 'null'
+          title: Name
+        building:
+          anyOf:
+          - type: string
+            maxLength: 60
+            minLength: 2
+          - type: 'null'
+          title: Building
+        floor:
+          anyOf:
+          - type: integer
+            maximum: 100.0
+            minimum: 0.0
+          - type: 'null'
+          title: Floor
+        capacity:
+          anyOf:
+          - type: integer
+            maximum: 500.0
+            minimum: 1.0
+          - type: 'null'
+          title: Capacity
+        resources:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Resources
+        status:
+          anyOf:
+          - type: string
+            enum:
+            - available
+            - maintenance
+          - type: 'null'
+          title: Status
+        description:
+          anyOf:
+          - type: string
+            maxLength: 300
+          - type: 'null'
+          title: Description
+      type: object
+      title: SpaceUpdate
+    SpaceValidationResponse:
+      properties:
+        valid:
+          type: boolean
+          title: Valid
+        reason:
+          type: string
+          title: Reason
+        space:
+          $ref: '#/components/schemas/SpaceResponse'
+      type: object
+      required:
+      - valid
+      - reason
+      - space
+      title: SpaceValidationResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

@@ -1,0 +1,137 @@
+{
+  "info": {
+    "name": "ReservaSOA — Colección de Pruebas SOA",
+    "description": "Colección Postman v2.1 para probar individualmente los 4 servicios SOA y el flujo integrado E2E a través del API Gateway.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gateway_url", "value": "http://127.0.0.1:8000" },
+    { "key": "jwt_token", "value": "" },
+    { "key": "space_id", "value": "1" },
+    { "key": "reservation_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "1. Catálogo SOA — Verificar salud de servicios",
+      "request": {
+        "method": "GET",
+        "url": "{{gateway_url}}/registry/services"
+      }
+    },
+    {
+      "name": "2. Auth — Login Admin (guarda JWT)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('jwt_token', json.access_token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@espaciohub.com\",\n  \"password\": \"Admin123!\"\n}"
+        },
+        "url": "{{gateway_url}}/api/auth/login"
+      }
+    },
+    {
+      "name": "3. Users — Listar usuarios activos",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+        "url": "{{gateway_url}}/api/users?only_active=true"
+      }
+    },
+    {
+      "name": "4. Spaces — Listar salas disponibles",
+      "request": {
+        "method": "GET",
+        "url": "{{gateway_url}}/api/spaces?status=available"
+      }
+    },
+    {
+      "name": "5. Spaces — Crear nueva sala (Admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"SALA-P1\",\n  \"name\": \"Sala Postman Demo\",\n  \"building\": \"Edificio Central\",\n  \"floor\": 3,\n  \"capacity\": 14,\n  \"resources\": [\"Proyector 4K\", \"Pizarra\"],\n  \"status\": \"available\"\n}"
+        },
+        "url": "{{gateway_url}}/api/spaces"
+      }
+    },
+    {
+      "name": "6. Reservations — Crear Reservación E2E (Orquestación SOA)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Reserva creada (201)', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('reservation_id', json.id);",
+              "pm.test('Incluye folio de confirmación', () => pm.expect(json.confirmation_code).to.include('CONF-'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"space_id\": {{space_id}},\n  \"title\": \"Sesión Integración Postman\",\n  \"reservation_date\": \"2026-12-20\",\n  \"start_time\": \"14:00\",\n  \"end_time\": \"15:30\",\n  \"attendees\": 6,\n  \"notes\": \"Prueba E2E desde Postman\"\n}"
+        },
+        "url": "{{gateway_url}}/api/reservations"
+      }
+    },
+    {
+      "name": "7. Reservations — Probar conflicto de horario (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"space_id\": {{space_id}},\n  \"title\": \"Conflicto Esperado\",\n  \"reservation_date\": \"2026-12-20\",\n  \"start_time\": \"14:30\",\n  \"end_time\": \"16:00\",\n  \"attendees\": 4\n}"
+        },
+        "url": "{{gateway_url}}/api/reservations"
+      }
+    },
+    {
+      "name": "8. Notifications — Consultar confirmaciones emitidas",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+        "url": "{{gateway_url}}/api/notifications?reservation_id={{reservation_id}}"
+      }
+    },
+    {
+      "name": "9. Reservations — Cancelar reservación",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+        "url": "{{gateway_url}}/api/reservations/{{reservation_id}}/cancel"
+      }
+    }
+  ]
+}

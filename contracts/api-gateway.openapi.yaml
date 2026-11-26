@@ -1,0 +1,341 @@
+openapi: 3.1.0
+info:
+  title: ReservaSOA — API Gateway y Catálogo de Servicios
+  description: Punto de entrada unificado para el cliente web y consumidores externos.
+    Expone el catálogo dinámico de servicios SOA y enruta solicitudes HTTP/JSON.
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      tags:
+      - Salud
+      summary: Health Check
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Check Health Get
+  /registry/services:
+    get:
+      tags:
+      - Catálogo SOA
+      summary: List Registered Services
+      operationId: list_registered_services_registry_services_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                title: Response List Registered Services Registry Services Get
+  /api/{resource}:
+    put:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Root
+      operationId: proxy_root_api__resource__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Root
+      operationId: proxy_root_api__resource__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Root
+      operationId: proxy_root_api__resource__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Root
+      operationId: proxy_root_api__resource__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Root
+      operationId: proxy_root_api__resource__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/{resource}/{subpath}:
+    put:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Subpath
+      operationId: proxy_subpath_api__resource___subpath__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      - name: subpath
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Subpath
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Subpath
+      operationId: proxy_subpath_api__resource___subpath__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      - name: subpath
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Subpath
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Subpath
+      operationId: proxy_subpath_api__resource___subpath__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      - name: subpath
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Subpath
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Subpath
+      operationId: proxy_subpath_api__resource___subpath__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      - name: subpath
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Subpath
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Subpath
+      operationId: proxy_subpath_api__resource___subpath__put
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      - name: subpath
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Subpath
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

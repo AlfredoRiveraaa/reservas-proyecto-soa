@@ -1,0 +1,434 @@
+openapi: 3.1.0
+info:
+  title: ReservaSOA — Servicio de Usuarios y Autenticación
+  description: Servicio SOA independiente responsable del ciclo de vida de usuarios,
+    roles corporativos y emisión/verificación de tokens JWT.
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      tags:
+      - Salud
+      summary: Health Check
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Check Health Get
+  /auth/register:
+    post:
+      tags:
+      - Autenticación
+      summary: Register User
+      operationId: register_user_auth_register_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /auth/login:
+    post:
+      tags:
+      - Autenticación
+      summary: Login
+      operationId: login_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /auth/me:
+    get:
+      tags:
+      - Autenticación
+      summary: Get Me
+      operationId: get_me_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+      security:
+      - HTTPBearer: []
+  /users:
+    get:
+      tags:
+      - Usuarios
+      summary: List Users
+      operationId: list_users_users_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: only_active
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Filtrar solo usuarios activos
+          default: false
+          title: Only Active
+        description: Filtrar solo usuarios activos
+      - name: x-service-key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+                title: Response List Users Users Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Usuarios
+      summary: Create User
+      operationId: create_user_users_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /users/{user_id}:
+    get:
+      tags:
+      - Usuarios
+      summary: Get User
+      operationId: get_user_users__user_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      - name: x-service-key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Usuarios
+      summary: Update User
+      operationId: update_user_users__user_id__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Usuarios
+      summary: Delete User
+      operationId: delete_user_users__user_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    LoginRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+          examples:
+          - admin@espaciohub.com
+        password:
+          type: string
+          maxLength: 72
+          minLength: 6
+          title: Password
+          examples:
+          - Admin123!
+      type: object
+      required:
+      - email
+      - password
+      title: LoginRequest
+    TokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+        user:
+          $ref: '#/components/schemas/UserResponse'
+      type: object
+      required:
+      - access_token
+      - user
+      title: TokenResponse
+    UserCreate:
+      properties:
+        full_name:
+          type: string
+          maxLength: 100
+          minLength: 3
+          title: Full Name
+          examples:
+          - Ana López
+        email:
+          type: string
+          format: email
+          title: Email
+          examples:
+          - ana.lopez@espaciohub.com
+        department:
+          type: string
+          maxLength: 60
+          minLength: 2
+          title: Department
+          examples:
+          - Ingeniería
+        password:
+          type: string
+          maxLength: 72
+          minLength: 6
+          title: Password
+          examples:
+          - ClaveSegura123
+        role:
+          type: string
+          enum:
+          - admin
+          - employee
+          title: Role
+          default: employee
+      type: object
+      required:
+      - full_name
+      - email
+      - department
+      - password
+      title: UserCreate
+    UserResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        full_name:
+          type: string
+          title: Full Name
+        email:
+          type: string
+          title: Email
+        department:
+          type: string
+          title: Department
+        role:
+          type: string
+          enum:
+          - admin
+          - employee
+          title: Role
+        is_active:
+          type: boolean
+          title: Is Active
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+      type: object
+      required:
+      - id
+      - full_name
+      - email
+      - department
+      - role
+      - is_active
+      - created_at
+      - updated_at
+      title: UserResponse
+    UserUpdate:
+      properties:
+        full_name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 3
+          - type: 'null'
+          title: Full Name
+        department:
+          anyOf:
+          - type: string
+            maxLength: 60
+            minLength: 2
+          - type: 'null'
+          title: Department
+        role:
+          anyOf:
+          - type: string
+            enum:
+            - admin
+            - employee
+          - type: 'null'
+          title: Role
+        is_active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Active
+      type: object
+      title: UserUpdate
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

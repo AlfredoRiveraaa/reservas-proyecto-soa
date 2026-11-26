@@ -1,0 +1,458 @@
+openapi: 3.1.0
+info:
+  title: ReservaSOA — Servicio de Reservaciones y Orquestación
+  description: Servicio SOA orquestador que gestiona el ciclo de vida de reservaciones,
+    valida horarios y coordina vía HTTP a users-service, spaces-service y notifications-service.
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      tags:
+      - Salud
+      summary: Health Check
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Check Health Get
+  /reservations:
+    get:
+      tags:
+      - Reservaciones
+      summary: List Reservations
+      operationId: list_reservations_reservations_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: User Id
+      - name: space_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Space Id
+      - name: reservation_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reservation Date
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - CONFIRMED
+            - CANCELLED
+            type: string
+          - type: 'null'
+          title: Status
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReservationResponse'
+                title: Response List Reservations Reservations Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Reservaciones
+      summary: Create Reservation
+      operationId: create_reservation_reservations_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /reservations/{reservation_id}:
+    get:
+      tags:
+      - Reservaciones
+      summary: Get Reservation
+      operationId: get_reservation_reservations__reservation_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: reservation_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Reservation Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Reservaciones
+      summary: Update Reservation
+      operationId: update_reservation_reservations__reservation_id__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: reservation_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Reservation Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Reservaciones
+      summary: Delete Reservation
+      operationId: delete_reservation_reservations__reservation_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: reservation_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Reservation Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /reservations/{reservation_id}/cancel:
+    post:
+      tags:
+      - Reservaciones
+      summary: Cancel Reservation
+      operationId: cancel_reservation_reservations__reservation_id__cancel_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: reservation_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Reservation Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ReservationCreate:
+      properties:
+        user_id:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: User Id
+          description: ID del usuario (si se omite, se toma del token JWT actual).
+        space_id:
+          type: integer
+          minimum: 1.0
+          title: Space Id
+          examples:
+          - 1
+        title:
+          type: string
+          maxLength: 120
+          minLength: 3
+          title: Title
+          examples:
+          - Revisión trimestral SOA
+        reservation_date:
+          type: string
+          title: Reservation Date
+          examples:
+          - '2026-12-01'
+        start_time:
+          type: string
+          title: Start Time
+          examples:
+          - '10:00'
+        end_time:
+          type: string
+          title: End Time
+          examples:
+          - '11:30'
+        attendees:
+          type: integer
+          maximum: 500.0
+          minimum: 1.0
+          title: Attendees
+          examples:
+          - 8
+        notes:
+          type: string
+          maxLength: 300
+          title: Notes
+          default: ''
+      type: object
+      required:
+      - space_id
+      - title
+      - reservation_date
+      - start_time
+      - end_time
+      - attendees
+      title: ReservationCreate
+    ReservationResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        user_id:
+          type: integer
+          title: User Id
+        user_name:
+          type: string
+          title: User Name
+        user_email:
+          type: string
+          title: User Email
+        space_id:
+          type: integer
+          title: Space Id
+        space_code:
+          type: string
+          title: Space Code
+        space_name:
+          type: string
+          title: Space Name
+        title:
+          type: string
+          title: Title
+        reservation_date:
+          type: string
+          title: Reservation Date
+        start_time:
+          type: string
+          title: Start Time
+        end_time:
+          type: string
+          title: End Time
+        attendees:
+          type: integer
+          title: Attendees
+        notes:
+          type: string
+          title: Notes
+        status:
+          type: string
+          enum:
+          - CONFIRMED
+          - CANCELLED
+          title: Status
+        confirmation_code:
+          type: string
+          title: Confirmation Code
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+        soa_trace:
+          items:
+            $ref: '#/components/schemas/SoaStepTrace'
+          type: array
+          title: Soa Trace
+      type: object
+      required:
+      - id
+      - user_id
+      - user_name
+      - user_email
+      - space_id
+      - space_code
+      - space_name
+      - title
+      - reservation_date
+      - start_time
+      - end_time
+      - attendees
+      - notes
+      - status
+      - confirmation_code
+      - created_at
+      - updated_at
+      title: ReservationResponse
+    ReservationUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 3
+          - type: 'null'
+          title: Title
+        reservation_date:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reservation Date
+        start_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Start Time
+        end_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: End Time
+        attendees:
+          anyOf:
+          - type: integer
+            maximum: 500.0
+            minimum: 1.0
+          - type: 'null'
+          title: Attendees
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 300
+          - type: 'null'
+          title: Notes
+      type: object
+      title: ReservationUpdate
+    SoaStepTrace:
+      properties:
+        service:
+          type: string
+          title: Service
+        operation:
+          type: string
+          title: Operation
+        status:
+          type: string
+          title: Status
+        detail:
+          type: string
+          title: Detail
+      type: object
+      required:
+      - service
+      - operation
+      - status
+      - detail
+      title: SoaStepTrace
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

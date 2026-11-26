@@ -1,0 +1,384 @@
+openapi: 3.1.0
+info:
+  title: ReservaSOA — Servicio de Notificaciones y Confirmaciones
+  description: Servicio SOA independiente que emite folios de confirmación y registra
+    el historial de notificaciones de reservaciones.
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      tags:
+      - Salud
+      summary: Health Check
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Check Health Get
+  /notifications:
+    post:
+      tags:
+      - Notificaciones
+      summary: Create Notification
+      operationId: create_notification_notifications_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: x-service-key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Notificaciones
+      summary: List Notifications
+      operationId: list_notifications_notifications_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: User Id
+      - name: reservation_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Reservation Id
+      - name: event_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - RESERVATION_CONFIRMED
+            - RESERVATION_UPDATED
+            - RESERVATION_CANCELLED
+            type: string
+          - type: 'null'
+          title: Event Type
+      - name: x-service-key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationResponse'
+                title: Response List Notifications Notifications Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /notifications/{notification_id}:
+    get:
+      tags:
+      - Notificaciones
+      summary: Get Notification
+      operationId: get_notification_notifications__notification_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Notification Id
+      - name: x-service-key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Notificaciones
+      summary: Delete Notification
+      operationId: delete_notification_notifications__notification_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Notification Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /notifications/{notification_id}/status:
+    patch:
+      tags:
+      - Notificaciones
+      summary: Update Notification Status
+      operationId: update_notification_status_notifications__notification_id__status_patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Notification Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationStatusUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    NotificationCreate:
+      properties:
+        reservation_id:
+          type: integer
+          minimum: 1.0
+          title: Reservation Id
+        user_id:
+          type: integer
+          minimum: 1.0
+          title: User Id
+        recipient_email:
+          type: string
+          format: email
+          title: Recipient Email
+        recipient_name:
+          type: string
+          maxLength: 100
+          minLength: 2
+          title: Recipient Name
+        event_type:
+          type: string
+          enum:
+          - RESERVATION_CONFIRMED
+          - RESERVATION_UPDATED
+          - RESERVATION_CANCELLED
+          title: Event Type
+          default: RESERVATION_CONFIRMED
+        subject:
+          type: string
+          maxLength: 160
+          minLength: 3
+          title: Subject
+        message:
+          type: string
+          maxLength: 1000
+          minLength: 5
+          title: Message
+        channel:
+          type: string
+          enum:
+          - EMAIL
+          - IN_APP
+          title: Channel
+          default: EMAIL
+      type: object
+      required:
+      - reservation_id
+      - user_id
+      - recipient_email
+      - recipient_name
+      - subject
+      - message
+      title: NotificationCreate
+    NotificationResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        confirmation_code:
+          type: string
+          title: Confirmation Code
+        reservation_id:
+          type: integer
+          title: Reservation Id
+        user_id:
+          type: integer
+          title: User Id
+        recipient_email:
+          type: string
+          title: Recipient Email
+        recipient_name:
+          type: string
+          title: Recipient Name
+        event_type:
+          type: string
+          enum:
+          - RESERVATION_CONFIRMED
+          - RESERVATION_UPDATED
+          - RESERVATION_CANCELLED
+          title: Event Type
+        subject:
+          type: string
+          title: Subject
+        message:
+          type: string
+          title: Message
+        channel:
+          type: string
+          enum:
+          - EMAIL
+          - IN_APP
+          title: Channel
+        status:
+          type: string
+          enum:
+          - SENT
+          - READ
+          - FAILED
+          title: Status
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+      type: object
+      required:
+      - id
+      - confirmation_code
+      - reservation_id
+      - user_id
+      - recipient_email
+      - recipient_name
+      - event_type
+      - subject
+      - message
+      - channel
+      - status
+      - created_at
+      - updated_at
+      title: NotificationResponse
+    NotificationStatusUpdate:
+      properties:
+        status:
+          type: string
+          enum:
+          - SENT
+          - READ
+          - FAILED
+          title: Status
+      type: object
+      required:
+      - status
+      title: NotificationStatusUpdate
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer
