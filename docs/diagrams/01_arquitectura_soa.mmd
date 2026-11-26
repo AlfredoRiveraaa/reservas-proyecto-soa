@@ -1,0 +1,40 @@
+flowchart LR
+    subgraph Consumers["Consumidores de Servicios"]
+        WEB["Cliente Web SPA\n(HTML5 / CSS3 / JS)"]
+        POSTMAN["Postman / Clientes REST"]
+    end
+
+    subgraph Entry["Capa de Acceso y Descubrimiento"]
+        GW["API Gateway & Catálogo SOA\n(FastAPI :8000)\n/api/* y /registry/services"]
+    end
+
+    subgraph Providers["Proveedores de Servicios SOA Independientes (REST / HTTP + JSON)"]
+        US["users-service (:8001)\nAuth JWT + CRUD Usuarios"]
+        SS["spaces-service (:8002)\nCRUD Salas, Recursos y Validación"]
+        RS["reservations-service (:8003)\nCRUD + Orquestador E2E"]
+        NS["notifications-service (:8004)\nFolios CONF y Confirmaciones"]
+    end
+
+    subgraph Storage["Persistencia Autónoma (Database-per-Service)"]
+        DB1[("users.db\nSQLite")]
+        DB2[("spaces.db\nSQLite")]
+        DB3[("reservations.db\nSQLite")]
+        DB4[("notifications.db\nSQLite")]
+    end
+
+    WEB -->|"HTTP/JSON + Bearer JWT"| GW
+    POSTMAN -->|"HTTP/JSON + Bearer JWT"| GW
+
+    GW --> US
+    GW --> SS
+    GW --> RS
+    GW --> NS
+
+    RS -->|"HTTP + X-Service-Key\nGET /users/{id}"| US
+    RS -->|"HTTP + X-Service-Key\nGET /spaces/{id}/validate"| SS
+    RS -->|"HTTP + X-Service-Key\nPOST /notifications"| NS
+
+    US --- DB1
+    SS --- DB2
+    RS --- DB3
+    NS --- DB4

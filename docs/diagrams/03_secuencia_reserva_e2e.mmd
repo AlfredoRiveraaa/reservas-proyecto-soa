@@ -1,0 +1,39 @@
+sequenceDiagram
+    actor U as Colaborador (Web)
+    participant GW as API Gateway (:8000)
+    participant RS as Reservations Service (:8003)
+    participant US as Users Service (:8001)
+    participant SS as Spaces Service (:8002)
+    participant NS as Notifications Service (:8004)
+
+    U->>GW: POST /api/reservations (JWT + datos de reserva)
+    GW->>RS: POST /reservations (reenvía JWT)
+    RS->>RS: Valida JWT y formato de entrada (Pydantic)
+    RS->>US: GET /users/{id} (X-Service-Key)
+    alt Usuario inexistente o inactivo
+        US-->>RS: 404 Not Found / is_active=false
+        RS-->>GW: 404 / 422 Error estructurado
+        GW-->>U: Muestra mensaje de error comprensible
+    else Usuario activo
+        US-->>RS: 200 OK (perfil de usuario)
+        RS->>SS: GET /spaces/{id}/validate?attendees=N (X-Service-Key)
+        alt Sala en mantenimiento o capacidad excedida
+            SS-->>RS: 200 OK (valid=false, reason)
+            RS-->>GW: 422 BusinessValidationError
+            GW-->>U: Muestra motivo de rechazo
+        else Sala válida
+            SS-->>RS: 200 OK (valid=true, datos de sala)
+            RS->>RS: Verifica traslapes de horario en reservations.db
+            alt Conflicto de horario
+                RS-->>GW: 409 Conflict
+                GW-->>U: Notifica empalme de horario
+            else Horario disponible
+                RS->>RS: INSERT reservation (status=CONFIRMED)
+                RS->>NS: POST /notifications (X-Service-Key)
+                NS-->>RS: 201 Created (confirmation_code=CONF-YYYY-XXXXXX)
+                RS->>RS: UPDATE confirmation_code
+                RS-->>GW: 201 Created (reserva + folio + soa_trace)
+                GW-->>U: Muestra folio y traza SOA paso a paso
+            end
+        end
+    end

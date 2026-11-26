@@ -1,0 +1,47 @@
+flowchart TB
+    subgraph Host["Nodo de Despliegue Local / Contenedor (Python 3.12 + Uvicorn)"]
+        subgraph P8000["Proceso :8000 — api-gateway"]
+            GW_APP["FastAPI Reverse Proxy"]
+            GW_REG["ServiceRegistry (/registry/services)"]
+            GW_UI["StaticFiles (/frontend)"]
+        end
+
+        subgraph P8001["Proceso :8001 — users-service"]
+            US_API["API REST + OpenAPI"]
+            US_REPO["UserRepository"]
+            US_DB[("data/users.db")]
+            US_API --> US_REPO --> US_DB
+        end
+
+        subgraph P8002["Proceso :8002 — spaces-service"]
+            SS_API["API REST + OpenAPI"]
+            SS_REPO["SpaceRepository"]
+            SS_DB[("data/spaces.db")]
+            SS_API --> SS_REPO --> SS_DB
+        end
+
+        subgraph P8003["Proceso :8003 — reservations-service"]
+            RS_API["API REST + OpenAPI"]
+            RS_ORCH["ReservationOrchestrator (httpx)"]
+            RS_REPO["ReservationRepository"]
+            RS_DB[("data/reservations.db")]
+            RS_API --> RS_ORCH --> RS_REPO --> RS_DB
+        end
+
+        subgraph P8004["Proceso :8004 — notifications-service"]
+            NS_API["API REST + OpenAPI"]
+            NS_REPO["NotificationRepository"]
+            NS_DB[("data/notifications.db")]
+            NS_API --> NS_REPO --> NS_DB
+        end
+
+        SHARED["Módulo compartido: shared/\n(config, JWT/PBKDF2, errores, http_client)"]
+    end
+
+    GW_APP --> US_API
+    GW_APP --> SS_API
+    GW_APP --> RS_API
+    GW_APP --> NS_API
+    RS_ORCH -.->|"REST/JSON"| US_API
+    RS_ORCH -.->|"REST/JSON"| SS_API
+    RS_ORCH -.->|"REST/JSON"| NS_API
