@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from services.reservations_service.models import (
@@ -121,8 +122,11 @@ class ReservationOrchestrator:
         """Ejecuta el flujo E2E completo de creación de reservación."""
         trace: list[SoaStepTrace] = []
 
-        # Paso 1: Validar existencia y estado activo del usuario en users-service
-        user = await self._fetch_active_user(effective_user_id)
+        # Pasos 1 y 2 en paralelo: validar usuario activo y disponibilidad/capacidad de sala
+        user, space = await asyncio.gather(
+            self._fetch_active_user(effective_user_id),
+            self._validate_space(payload.space_id, payload.attendees),
+        )
         trace.append(
             SoaStepTrace(
                 service="users-service",
@@ -131,9 +135,6 @@ class ReservationOrchestrator:
                 detail=f"Usuario activo validado: {user['full_name']} ({user['department']})",
             )
         )
-
-        # Paso 2: Validar existencia, disponibilidad operativa y capacidad en spaces-service
-        space = await self._validate_space(payload.space_id, payload.attendees)
         trace.append(
             SoaStepTrace(
                 service="spaces-service",

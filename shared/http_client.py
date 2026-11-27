@@ -1,4 +1,4 @@
-"""Cliente HTTP asíncrono reutilizable para comunicación entre servicios SOA."""
+"""Cliente HTTP asíncrono reutilizable con pool de conexiones persistentes para SOA."""
 
 from __future__ import annotations
 
@@ -9,9 +9,27 @@ import httpx
 from shared.config import get_settings
 from shared.errors import UpstreamServiceError
 
+_SHARED_CLIENTS: dict[tuple[str, float], httpx.AsyncClient] = {}
+
+
+def _get_pooled_client(base_url: str, timeout: float) -> httpx.AsyncClient:
+    """Reutiliza un AsyncClient con keep-alive para evitar sobrecarga de sockets/SSL en Windows."""
+    key = (base_url, timeout)
+    client = _SHARED_CLIENTS.get(key)
+    if client is None or client.is_closed:
+        use_verify = base_url.startswith("https://")
+        client = httpx.AsyncClient(
+            base_url=base_url,
+            timeout=timeout,
+            verify=use_verify,
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
+        )
+        _SHARED_CLIENTS[key] = client
+    return client
+
 
 class ServiceHttpClient:
-    """Encapsula llamadas REST/HTTP entre servicios con timeout, llave interna y manejo de fallos."""
+    """Encapsula llamadas REST/HTTP entre servicios con pool keep-alive, llave interna y manejo de fallos."""
 
     def __init__(self, target_service: str, base_url: str, timeout: float | None = None) -> None:
         settings = get_settings()
@@ -37,16 +55,17 @@ class ServiceHttpClient:
         params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
     ) -> httpx.Response:
-        url = f"{self.base_url}/{path.lstrip('/')}"
+        clean_path = f"/{path.lstrip('/')}"
+        url = f"{self.base_url}{clean_path}"
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                return await client.request(
-                    method=method.upper(),
-                    url=url,
-                    json=json_body,
-                    params=params,
-                    headers=self._build_headers(headers),
-                )
+            client = _get_pooled_client(self.base_url, self.timeout)
+            return await client.request(
+                method=method.upper(),
+                url=clean_path,
+                json=json_body,
+                params=params,
+                headers=self._build_headers(headers),
+            )
         except httpx.TimeoutException as exc:
             raise UpstreamServiceError(
                 message=f"Tiempo de espera agotado al comunicarse con {self.target_service}.",

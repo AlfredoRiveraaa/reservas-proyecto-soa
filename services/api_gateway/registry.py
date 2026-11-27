@@ -81,16 +81,17 @@ class ServiceRegistry:
             ),
         ]
 
-    async def _probe_service(self, descriptor: ServiceDescriptor) -> dict[str, Any]:
+    async def _probe_service(
+        self, client: httpx.AsyncClient, descriptor: ServiceDescriptor
+    ) -> dict[str, Any]:
         started = time.perf_counter()
         status_label = "DOWN"
         version = "unknown"
         try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                resp = await client.get(f"{descriptor.base_url}/health")
-                if resp.status_code == 200:
-                    status_label = "UP"
-                    version = resp.json().get("version", "1.0.0")
+            resp = await client.get(f"{descriptor.base_url}/health")
+            if resp.status_code == 200:
+                status_label = "UP"
+                version = resp.json().get("version", "1.0.0")
         except httpx.RequestError:
             status_label = "DOWN"
 
@@ -109,6 +110,14 @@ class ServiceRegistry:
             "latency_ms": latency_ms,
         }
 
-    async def get_catalog(self) -> list[dict[str, Any]]:
-        results = await asyncio.gather(*(self._probe_service(svc) for svc in self.services))
-        return list(results)
+    async def get_catalog(self, client: httpx.AsyncClient | None = None) -> list[dict[str, Any]]:
+        if client is not None:
+            results = await asyncio.gather(
+                *(self._probe_service(client, svc) for svc in self.services)
+            )
+            return list(results)
+        async with httpx.AsyncClient(timeout=2.0, verify=False) as temp_client:
+            results = await asyncio.gather(
+                *(self._probe_service(temp_client, svc) for svc in self.services)
+            )
+            return list(results)
