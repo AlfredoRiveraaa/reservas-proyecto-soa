@@ -74,8 +74,8 @@ python scripts/seed_data.py
 ```
 
 Esto creará:
-- **Administrador**: `admin@espaciohub.com` / `Admin123!`
-- **Colaboradores**: `ana.lopez@espaciohub.com` / `Ana12345` y `carlos.mendez@espaciohub.com` / `Carlos123`
+- **Administrador**: `admin@nexosalas.com` / `Admin123!`
+- **Colaboradores**: `ana.lopez@nexosalas.com` / `Ana12345` y `carlos.mendez@nexosalas.com` / `Carlos123`
 - **5 salas corporativas** (4 disponibles y 1 en mantenimiento)
 - **1 reservación inicial** orquestada de extremo a extremo con folio `CONF-...`
 

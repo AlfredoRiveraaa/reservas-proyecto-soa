@@ -80,7 +80,7 @@ def soa_env(tmp_path: Path) -> dict[str, Any]:
         "/auth/register",
         json={
             "full_name": "Admin Pruebas",
-            "email": "admin@espaciohub.com",
+            "email": "admin@nexosalas.com",
             "department": "TI",
             "password": "Admin123!",
             "role": "admin",
@@ -93,7 +93,7 @@ def soa_env(tmp_path: Path) -> dict[str, Any]:
         "/auth/register",
         json={
             "full_name": "Ana López",
-            "email": "ana@espaciohub.com",
+            "email": "ana@nexosalas.com",
             "department": "Ingeniería",
             "password": "Ana12345",
             "role": "employee",
@@ -104,12 +104,12 @@ def soa_env(tmp_path: Path) -> dict[str, Any]:
 
     admin_token = users_client.post(
         "/auth/login",
-        json={"email": "admin@espaciohub.com", "password": "Admin123!"},
+        json={"email": "admin@nexosalas.com", "password": "Admin123!"},
     ).json()["access_token"]
 
     emp_token = users_client.post(
         "/auth/login",
-        json={"email": "ana@espaciohub.com", "password": "Ana12345"},
+        json={"email": "ana@nexosalas.com", "password": "Ana12345"},
     ).json()["access_token"]
 
     return {

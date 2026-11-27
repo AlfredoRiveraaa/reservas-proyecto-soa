@@ -14,7 +14,7 @@ def test_notifications_crud_flow(soa_env):
         json={
             "reservation_id": 10,
             "user_id": soa_env["emp_user"]["id"],
-            "recipient_email": "ana@espaciohub.com",
+            "recipient_email": "ana@nexosalas.com",
             "recipient_name": "Ana López",
             "event_type": "RESERVATION_CONFIRMED",
             "subject": "Confirmación Sala A1",

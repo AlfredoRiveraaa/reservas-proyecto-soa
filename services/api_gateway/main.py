@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
@@ -16,14 +16,26 @@ from shared.config import PROJECT_ROOT, get_settings
 from shared.errors import build_error_payload, register_error_handlers
 
 SERVICE_NAME = "api-gateway"
-SERVICE_VERSION = "1.0.0"
+SERVICE_VERSION = "1.1.0"
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
 
 def create_app() -> FastAPI:
-    """Fábrica de la aplicación FastAPI para el API Gateway."""
+    """Fábrica de la aplicación FastAPI para el API Gateway con pool HTTP persistente."""
     settings = get_settings()
     registry = ServiceRegistry(settings)
+
+    @asynccontextmanager
+    async def lifespan(app_instance: FastAPI):
+        app_instance.state.http_client = httpx.AsyncClient(
+            timeout=settings.http_timeout_seconds,
+            verify=False,
+            limits=httpx.Limits(max_keepalive_connections=32, max_connections=64),
+        )
+        try:
+            yield
+        finally:
+            await app_instance.state.http_client.aclose()
 
     app = FastAPI(
         title="ReservaSOA — API Gateway y Catálogo de Servicios",
@@ -32,6 +44,7 @@ def create_app() -> FastAPI:
             "Expone el catálogo dinámico de servicios SOA y enruta solicitudes HTTP/JSON."
         ),
         version=SERVICE_VERSION,
+        lifespan=lifespan,
     )
 
     app.add_middleware(
@@ -54,11 +67,22 @@ def create_app() -> FastAPI:
         "notifications": settings.notifications_service_url,
     }
 
+    def _get_client() -> httpx.AsyncClient:
+        client = getattr(app.state, "http_client", None)
+        if client is None or client.is_closed:
+            client = httpx.AsyncClient(
+                timeout=settings.http_timeout_seconds,
+                verify=False,
+                limits=httpx.Limits(max_keepalive_connections=32, max_connections=64),
+            )
+            app.state.http_client = client
+        return client
+
     @app.get("/", include_in_schema=False)
     def serve_frontend() -> Response:
         index_file = FRONTEND_DIR / "index.html"
         if index_file.exists():
-            return FileResponse(index_file)
+            return FileResponse(index_file, headers={"Cache-Control": "no-cache"})
         return JSONResponse({"message": "API Gateway de ReservaSOA activo. Visite /docs."})
 
     @app.get("/health", tags=["Salud"])
@@ -67,7 +91,7 @@ def create_app() -> FastAPI:
 
     @app.get("/registry/services", tags=["Catálogo SOA"])
     async def list_registered_services() -> dict[str, Any]:
-        services = await registry.get_catalog()
+        services = await registry.get_catalog(client=_get_client())
         up_count = sum(1 for item in services if item["status"] == "UP")
         return {
             "gateway": SERVICE_NAME,
@@ -85,14 +109,14 @@ def create_app() -> FastAPI:
 
         body = await request.body()
         try:
-            async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
-                upstream = await client.request(
-                    method=request.method,
-                    url=url,
-                    params=dict(request.query_params),
-                    content=body if body else None,
-                    headers=headers,
-                )
+            client = _get_client()
+            upstream = await client.request(
+                method=request.method,
+                url=url,
+                params=dict(request.query_params),
+                content=body if body else None,
+                headers=headers,
+            )
         except httpx.TimeoutException:
             return JSONResponse(
                 status_code=504,

@@ -3,7 +3,7 @@ info:
   title: ReservaSOA — API Gateway y Catálogo de Servicios
   description: Punto de entrada unificado para el cliente web y consumidores externos.
     Expone el catálogo dinámico de servicios SOA y enruta solicitudes HTTP/JSON.
-  version: 1.0.0
+  version: 1.1.0
 paths:
   /health:
     get:
@@ -36,11 +36,11 @@ paths:
                 type: object
                 title: Response List Registered Services Registry Services Get
   /api/{resource}:
-    put:
+    post:
       tags:
       - Enrutamiento SOA
       summary: Proxy Root
-      operationId: proxy_root_api__resource__put
+      operationId: proxy_root_api__resource__post
       parameters:
       - name: resource
         in: path
@@ -64,31 +64,7 @@ paths:
       tags:
       - Enrutamiento SOA
       summary: Proxy Root
-      operationId: proxy_root_api__resource__put
-      parameters:
-      - name: resource
-        in: path
-        required: true
-        schema:
-          type: string
-          title: Resource
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-    post:
-      tags:
-      - Enrutamiento SOA
-      summary: Proxy Root
-      operationId: proxy_root_api__resource__put
+      operationId: proxy_root_api__resource__post
       parameters:
       - name: resource
         in: path
@@ -112,7 +88,31 @@ paths:
       tags:
       - Enrutamiento SOA
       summary: Proxy Root
-      operationId: proxy_root_api__resource__put
+      operationId: proxy_root_api__resource__post
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Root
+      operationId: proxy_root_api__resource__post
       parameters:
       - name: resource
         in: path
@@ -136,7 +136,7 @@ paths:
       tags:
       - Enrutamiento SOA
       summary: Proxy Root
-      operationId: proxy_root_api__resource__put
+      operationId: proxy_root_api__resource__post
       parameters:
       - name: resource
         in: path
@@ -157,11 +157,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
   /api/{resource}/{subpath}:
-    put:
+    post:
       tags:
       - Enrutamiento SOA
       summary: Proxy Subpath
-      operationId: proxy_subpath_api__resource___subpath__put
+      operationId: proxy_subpath_api__resource___subpath__post
       parameters:
       - name: resource
         in: path
@@ -191,37 +191,7 @@ paths:
       tags:
       - Enrutamiento SOA
       summary: Proxy Subpath
-      operationId: proxy_subpath_api__resource___subpath__put
-      parameters:
-      - name: resource
-        in: path
-        required: true
-        schema:
-          type: string
-          title: Resource
-      - name: subpath
-        in: path
-        required: true
-        schema:
-          type: string
-          title: Subpath
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-    post:
-      tags:
-      - Enrutamiento SOA
-      summary: Proxy Subpath
-      operationId: proxy_subpath_api__resource___subpath__put
+      operationId: proxy_subpath_api__resource___subpath__post
       parameters:
       - name: resource
         in: path
@@ -251,7 +221,37 @@ paths:
       tags:
       - Enrutamiento SOA
       summary: Proxy Subpath
-      operationId: proxy_subpath_api__resource___subpath__put
+      operationId: proxy_subpath_api__resource___subpath__post
+      parameters:
+      - name: resource
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Resource
+      - name: subpath
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Subpath
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Enrutamiento SOA
+      summary: Proxy Subpath
+      operationId: proxy_subpath_api__resource___subpath__post
       parameters:
       - name: resource
         in: path
@@ -281,7 +281,7 @@ paths:
       tags:
       - Enrutamiento SOA
       summary: Proxy Subpath
-      operationId: proxy_subpath_api__resource___subpath__put
+      operationId: proxy_subpath_api__resource___subpath__post
       parameters:
       - name: resource
         in: path

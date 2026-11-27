@@ -7,7 +7,7 @@ Repositorio oficial: `https://github.com/AlfredoRiveraaa/reservas-proyecto-soa`
 
 ## Descripción General
 
-**ReservaSOA** resuelve la fragmentación de procesos en la administración de espacios y recursos corporativos (*EspacioHub*) mediante una **Arquitectura Orientada a Servicios (SOA)** implementada en **Python + FastAPI**.  
+**ReservaSOA** resuelve la fragmentación de procesos en la administración de espacios y recursos corporativos (*NexoSalas*) mediante una **Arquitectura Orientada a Servicios (SOA)** implementada en **Python + FastAPI**.  
 El sistema divide sus responsabilidades en **4 servicios independientes** (cada uno con su propio proceso, puerto, contrato OpenAPI 3.0 y base de datos SQLite autónoma), integrados a través de un **API Gateway con Catálogo Dinámico de Servicios** y una **Aplicación Cliente Web**.
 
 ---
