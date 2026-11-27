@@ -7,13 +7,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/styles.css?v=2" />
+  <link rel="stylesheet" href="/static/styles.css?v=3" />
 </head>
 <body>
-  <!-- Notificaciones flotantes (no desplazan el layout) -->
+  <!-- Notificaciones flotantes -->
   <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-  <!-- VISTA 1: AUTENTICACIÓN (Split arquitectónico) -->
+  <!-- Modal reutilizable para edición y detalle -->
+  <div id="modal-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="modal-title">Detalle</h2>
+        <button type="button" id="btn-modal-close" class="btn btn-ghost btn-sm" aria-label="Cerrar ventana">Cerrar</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- VISTA 1: AUTENTICACIÓN -->
   <div id="auth-shell" class="auth-shell">
     <section class="auth-visual" aria-label="Información de EspacioHub">
       <div class="auth-visual-inner">
@@ -59,7 +70,6 @@
           </button>
         </div>
 
-        <!-- Formulario Login -->
         <form id="login-form" class="stack-form" novalidate>
           <div class="form-head">
             <h2>Bienvenido de nuevo</h2>
@@ -87,7 +97,6 @@
           </div>
         </form>
 
-        <!-- Formulario Registro -->
         <form id="register-form" class="stack-form hidden" novalidate>
           <div class="form-head">
             <h2>Crear cuenta corporativa</h2>
@@ -121,7 +130,7 @@
     </section>
   </div>
 
-  <!-- VISTA 2: APLICACIÓN PRINCIPAL (App Shell con Sidebar) -->
+  <!-- VISTA 2: APLICACIÓN PRINCIPAL -->
   <div id="app-shell" class="app-shell hidden">
     <aside class="sidebar" aria-label="Navegación principal">
       <div class="sidebar-top">
@@ -154,6 +163,15 @@
             <span>Salas y recursos</span>
           </button>
 
+          <button type="button" class="nav-item" data-view="view-users">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <circle cx="9" cy="7" r="4" />
+              <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85" />
+            </svg>
+            <span>Usuarios y perfil</span>
+          </button>
+
           <button type="button" class="nav-item" data-view="view-notifications">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
               <path d="M9 12l2 2 4-4" />
@@ -175,14 +193,14 @@
       </div>
 
       <div class="sidebar-footer">
-        <div class="user-card">
+        <button type="button" id="btn-sidebar-profile" class="user-card user-card-btn" title="Ver mi perfil">
           <div id="user-avatar" class="avatar">AH</div>
           <div class="user-meta">
             <strong id="session-name">Usuario</strong>
             <span id="session-dept">Departamento</span>
           </div>
           <span id="session-role" class="role-chip">admin</span>
-        </div>
+        </button>
         <button type="button" id="btn-logout" class="btn btn-ghost btn-full">Cerrar sesión</button>
       </div>
     </aside>
@@ -199,11 +217,10 @@
         </div>
       </header>
 
-      <!-- VISTA: AGENDA Y RESERVAS -->
+      <!-- VISTA 1: AGENDA Y RESERVAS -->
       <section id="view-reservations" class="view-section active">
         <div class="reservations-layout">
           <div class="main-col">
-            <!-- Selector visual de salas -->
             <div class="panel">
               <div class="panel-head">
                 <h2>Elige un espacio</h2>
@@ -212,7 +229,6 @@
               <div id="room-picker-grid" class="room-picker-grid"></div>
             </div>
 
-            <!-- Tabla / Lista de agenda -->
             <div class="panel">
               <div class="panel-head">
                 <h2>Reservaciones programadas</h2>
@@ -226,13 +242,17 @@
             </div>
           </div>
 
-          <!-- Rail derecho: Compositor + Pipeline SOA -->
           <aside class="side-rail">
             <div class="panel">
               <div class="panel-head">
                 <h2>Nueva reservación</h2>
               </div>
               <form id="reservation-form" class="stack-form">
+                <div id="admin-res-user-field" class="field hidden">
+                  <label for="res-user-id">Reservar a nombre de (Admin)</label>
+                  <select id="res-user-id"></select>
+                </div>
+
                 <div class="field">
                   <label for="res-space">Espacio seleccionado</label>
                   <select id="res-space" required></select>
@@ -270,13 +290,19 @@
                   <input type="text" id="res-notes" placeholder="Ej. Adaptador HDMI o café" />
                 </div>
 
-                <button type="submit" id="btn-reserve-submit" class="btn btn-primary btn-full">
-                  Confirmar reservación
-                </button>
+                <div id="space-validation-box" class="validation-box hidden"></div>
+
+                <div class="form-action-row">
+                  <button type="button" id="btn-validate-space" class="btn btn-outline">
+                    Validar sala
+                  </button>
+                  <button type="submit" id="btn-reserve-submit" class="btn btn-primary">
+                    Confirmar reservación
+                  </button>
+                </div>
               </form>
             </div>
 
-            <!-- Elemento distintivo: Pipeline SOA en vivo -->
             <div class="panel pipeline-panel">
               <div class="panel-head">
                 <h2>Trazabilidad SOA</h2>
@@ -284,7 +310,7 @@
               </div>
               <div id="soa-trace-box" class="pipeline-list">
                 <p class="empty-hint">
-                  Al confirmar o cancelar una reserva verás aquí cada llamada HTTP ejecutada entre los servicios.
+                  Al confirmar, editar o cancelar una reserva verás aquí cada llamada HTTP ejecutada entre los servicios.
                 </p>
               </div>
             </div>
@@ -292,12 +318,12 @@
         </div>
       </section>
 
-      <!-- VISTA: SALAS Y RECURSOS -->
+      <!-- VISTA 2: SALAS Y RECURSOS -->
       <section id="view-spaces" class="view-section">
         <div id="admin-space-panel" class="panel hidden">
           <div class="panel-head">
             <h2>Registrar nuevo espacio</h2>
-            <span class="muted-text">Visible únicamente para administradores</span>
+            <span class="muted-text">Control exclusivo de administrador</span>
           </div>
           <form id="space-form" class="grid-form">
             <div class="field">
@@ -324,6 +350,10 @@
               <label for="sp-resources">Equipamiento (separado por comas)</label>
               <input type="text" id="sp-resources" placeholder="Proyector 4K, Pizarra, Zoom Room" />
             </div>
+            <div class="field full-width-field">
+              <label for="sp-description">Descripción (opcional)</label>
+              <input type="text" id="sp-description" placeholder="Ej. Sala equipada para presentaciones ejecutivas" />
+            </div>
             <div class="grid-form-actions">
               <button type="submit" id="btn-space-submit" class="btn btn-primary">Guardar espacio</button>
             </div>
@@ -339,12 +369,88 @@
         </div>
       </section>
 
-      <!-- VISTA: COMPROBANTES / NOTIFICACIONES -->
+      <!-- VISTA 3: USUARIOS Y PERFIL -->
+      <section id="view-users" class="view-section">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Mi perfil autenticado</h2>
+            <span class="mono-meta">GET /api/auth/me</span>
+          </div>
+          <div id="my-profile-box" class="profile-grid"></div>
+        </div>
+
+        <div id="admin-user-panel" class="panel hidden">
+          <div class="panel-head">
+            <h2>Dar de alta nuevo usuario</h2>
+            <span class="muted-text">POST /api/users (Solo administrador)</span>
+          </div>
+          <form id="admin-user-form" class="grid-form">
+            <div class="field">
+              <label for="u-name">Nombre completo</label>
+              <input type="text" id="u-name" required minlength="3" placeholder="Ej. Laura Ramírez" />
+            </div>
+            <div class="field">
+              <label for="u-email">Correo electrónico</label>
+              <input type="email" id="u-email" required placeholder="laura@espaciohub.com" />
+            </div>
+            <div class="field">
+              <label for="u-dept">Departamento</label>
+              <input type="text" id="u-dept" required placeholder="Arquitectura" />
+            </div>
+            <div class="field">
+              <label for="u-role">Rol</label>
+              <select id="u-role">
+                <option value="employee">Empleado</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="u-password">Contraseña inicial</label>
+              <input type="password" id="u-password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div class="grid-form-actions">
+              <button type="submit" id="btn-user-submit" class="btn btn-primary">Crear usuario</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Directorio de colaboradores</h2>
+            <label class="checkbox-inline">
+              <input type="checkbox" id="users-only-active" />
+              <span>Mostrar solo activos</span>
+            </label>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre y correo</th>
+                  <th>Departamento</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 4: COMPROBANTES / NOTIFICACIONES -->
       <section id="view-notifications" class="view-section">
         <div class="panel">
           <div class="panel-head">
             <h2>Historial de comprobantes emitidos</h2>
-            <span id="notifs-count-label" class="muted-text"></span>
+            <div class="filter-pills" role="group" aria-label="Filtrar notificaciones">
+              <button type="button" class="filter-pill active" data-notif-filter="ALL">Todos</button>
+              <button type="button" class="filter-pill" data-notif-filter="RESERVATION_CONFIRMED">Confirmación</button>
+              <button type="button" class="filter-pill" data-notif-filter="RESERVATION_UPDATED">Actualización</button>
+              <button type="button" class="filter-pill" data-notif-filter="RESERVATION_CANCELLED">Cancelación</button>
+            </div>
           </div>
           <div class="table-wrap">
             <table>
@@ -356,6 +462,7 @@
                   <th>Destinatario</th>
                   <th>Asunto</th>
                   <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody id="notifications-tbody"></tbody>
@@ -364,7 +471,7 @@
         </div>
       </section>
 
-      <!-- VISTA: CATÁLOGO DE SERVICIOS SOA -->
+      <!-- VISTA 5: CATÁLOGO DE SERVICIOS SOA -->
       <section id="view-catalog" class="view-section">
         <div class="panel">
           <div class="panel-head">
@@ -380,6 +487,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js?v=2"></script>
+  <script src="/static/app.js?v=3"></script>
 </body>
 </html>

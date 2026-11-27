@@ -4,7 +4,10 @@ const state = {
   activeView: "view-reservations",
   spaces: [],
   reservations: [],
+  users: [],
+  notifications: [],
   resFilter: "ALL",
+  notifFilter: "ALL",
   selectedSpaceId: null,
   loadedViews: new Set(),
 };
@@ -12,15 +15,19 @@ const state = {
 const VIEW_META = {
   "view-reservations": {
     title: "Agenda y reservas",
-    subtitle: "Selecciona una sala, elige horario y genera una confirmación orquestada.",
+    subtitle: "Selecciona una sala, valida capacidad y genera una confirmación orquestada.",
   },
   "view-spaces": {
     title: "Salas y recursos",
-    subtitle: "Consulta disponibilidad operativa, capacidad y equipamiento de cada espacio.",
+    subtitle: "Administra disponibilidad operativa, capacidad y equipamiento de cada espacio.",
+  },
+  "view-users": {
+    title: "Usuarios y perfil",
+    subtitle: "Consulta tu perfil JWT y administra el directorio de colaboradores en users-service.",
   },
   "view-notifications": {
     title: "Comprobantes",
-    subtitle: "Historial de folios de confirmación y cancelación emitidos por notifications-service.",
+    subtitle: "Historial de folios de confirmación, actualización y cancelación en notifications-service.",
   },
   "view-catalog": {
     title: "Servicios SOA",
@@ -32,15 +39,16 @@ const toastContainer = document.getElementById("toast-container");
 const authShell = document.getElementById("auth-shell");
 const appShell = document.getElementById("app-shell");
 const latencyPill = document.getElementById("gateway-latency-pill");
+const modalBackdrop = document.getElementById("modal-backdrop");
+const modalTitle = document.getElementById("modal-title");
+const modalBody = document.getElementById("modal-body");
 
 function showToast(message, type = "success") {
   const toast = document.createElement("div");
   toast.className = `toast ${type === "error" ? "toast-error" : ""}`;
   toast.textContent = message;
   toastContainer.appendChild(toast);
-  setTimeout(() => {
-    toast.remove();
-  }, 4500);
+  setTimeout(() => toast.remove(), 4500);
 }
 
 function setButtonLoading(button, isLoading, loadingText) {
@@ -55,6 +63,25 @@ function setButtonLoading(button, isLoading, loadingText) {
   }
 }
 
+function openModal(title, htmlContent) {
+  modalTitle.textContent = title;
+  modalBody.innerHTML = htmlContent;
+  modalBackdrop.classList.remove("hidden");
+}
+
+function closeModal() {
+  modalBackdrop.classList.add("hidden");
+  modalBody.innerHTML = "";
+}
+
+document.getElementById("btn-modal-close").addEventListener("click", closeModal);
+modalBackdrop.addEventListener("click", (e) => {
+  if (e.target === modalBackdrop) closeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !modalBackdrop.classList.contains("hidden")) closeModal();
+});
+
 async function apiFetch(path, options = {}) {
   const started = performance.now();
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
@@ -63,9 +90,7 @@ async function apiFetch(path, options = {}) {
   }
   const response = await fetch(path, { ...options, headers });
   const elapsed = Math.round(performance.now() - started);
-  if (latencyPill) {
-    latencyPill.textContent = `${elapsed} ms`;
-  }
+  if (latencyPill) latencyPill.textContent = `${elapsed} ms`;
 
   const text = await response.text();
   let data = null;
@@ -84,13 +109,19 @@ async function apiFetch(path, options = {}) {
   return { data, elapsed };
 }
 
+function isAdmin() {
+  return state.user && state.user.role === "admin";
+}
+
 function getInitials(name = "") {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join("") || "EH";
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0].toUpperCase())
+      .join("") || "EH"
+  );
 }
 
 function statusBadge(status) {
@@ -101,14 +132,17 @@ function statusBadge(status) {
     maintenance: ["Mantenimiento", "status-warn"],
     UP: ["Activo", "status-ok"],
     DOWN: ["Sin respuesta", "status-err"],
-    SENT: ["Enviado", "status-ok"],
+    SENT: ["Enviado", "status-warn"],
     READ: ["Leído", "status-ok"],
     FAILED: ["Error", "status-err"],
+    active: ["Activo", "status-ok"],
+    inactive: ["Inactivo", "status-err"],
   };
   const [label, cls] = map[status] || [status, "status-ok"];
   return `<span class="status-badge ${cls}">${label}</span>`;
 }
 
+/* ==================== ESPACIOS ==================== */
 function renderRoomPicker() {
   const grid = document.getElementById("room-picker-grid");
   const select = document.getElementById("res-space");
@@ -124,7 +158,7 @@ function renderRoomPicker() {
   const availableCount = state.spaces.filter((s) => s.status === "available").length;
   countLabel.textContent = `${availableCount} de ${state.spaces.length} disponibles`;
 
-  if (!state.selectedSpaceId) {
+  if (!state.selectedSpaceId || !state.spaces.some((s) => s.id === state.selectedSpaceId)) {
     const firstAvailable = state.spaces.find((s) => s.status === "available") || state.spaces[0];
     state.selectedSpaceId = firstAvailable.id;
   }
@@ -154,6 +188,7 @@ function renderRoomPicker() {
     btn.addEventListener("click", () => {
       state.selectedSpaceId = Number(btn.dataset.pickSpace);
       select.value = String(state.selectedSpaceId);
+      document.getElementById("space-validation-box").classList.add("hidden");
       renderRoomPicker();
     });
   });
@@ -177,6 +212,7 @@ function renderSpacesCatalog(filterText = "") {
     return;
   }
 
+  const admin = isAdmin();
   grid.innerHTML = filtered
     .map(
       (s) => `
@@ -193,11 +229,138 @@ function renderSpacesCatalog(filterText = "") {
         <div class="chip-list">
           ${s.resources.map((r) => `<span class="chip">${r}</span>`).join("")}
         </div>
+        ${
+          admin
+            ? `<div class="card-actions">
+                <button type="button" class="btn btn-outline btn-sm" data-edit-space="${s.id}">Editar</button>
+                <button type="button" class="btn btn-ghost btn-sm" data-toggle-space="${s.id}" data-next-status="${s.status === "available" ? "maintenance" : "available"}">
+                  ${s.status === "available" ? "Mantenimiento" : "Habilitar"}
+                </button>
+                <button type="button" class="btn btn-danger-subtle" data-delete-space="${s.id}">Eliminar</button>
+              </div>`
+            : ""
+        }
       </article>`
     )
     .join("");
+
+  if (admin) {
+    grid.querySelectorAll("[data-edit-space]").forEach((btn) => {
+      btn.addEventListener("click", () => openEditSpaceModal(Number(btn.dataset.editSpace)));
+    });
+    grid.querySelectorAll("[data-toggle-space]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = Number(btn.dataset.toggleSpace);
+        const nextStatus = btn.dataset.nextStatus;
+        setButtonLoading(btn, true, "Actualizando...");
+        try {
+          await apiFetch(`/api/spaces/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ status: nextStatus }),
+          });
+          showToast(`Estado actualizado a ${nextStatus === "available" ? "disponible" : "mantenimiento"}.`);
+          await loadSpaces();
+        } catch (err) {
+          showToast(err.message, "error");
+          setButtonLoading(btn, false);
+        }
+      });
+    });
+    grid.querySelectorAll("[data-delete-space]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = Number(btn.dataset.deleteSpace);
+        if (!confirm("¿Eliminar este espacio del catálogo?")) return;
+        setButtonLoading(btn, true, "Eliminando...");
+        try {
+          await apiFetch(`/api/spaces/${id}`, { method: "DELETE" });
+          showToast("Espacio eliminado.");
+          await loadSpaces();
+        } catch (err) {
+          showToast(err.message, "error");
+          setButtonLoading(btn, false);
+        }
+      });
+    });
+  }
 }
 
+async function openEditSpaceModal(spaceId) {
+  try {
+    const { data: space } = await apiFetch(`/api/spaces/${spaceId}`);
+    openModal(
+      `Editar espacio ${space.code}`,
+      `<form id="edit-space-form" class="stack-form">
+        <div class="field">
+          <label for="es-name">Nombre</label>
+          <input type="text" id="es-name" required value="${space.name}" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="es-building">Edificio</label>
+            <input type="text" id="es-building" required value="${space.building}" />
+          </div>
+          <div class="field">
+            <label for="es-floor">Piso</label>
+            <input type="number" id="es-floor" min="0" required value="${space.floor}" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="es-capacity">Capacidad</label>
+            <input type="number" id="es-capacity" min="1" required value="${space.capacity}" />
+          </div>
+          <div class="field">
+            <label for="es-status">Estado</label>
+            <select id="es-status">
+              <option value="available" ${space.status === "available" ? "selected" : ""}>Disponible</option>
+              <option value="maintenance" ${space.status === "maintenance" ? "selected" : ""}>Mantenimiento</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="es-resources">Equipamiento (separado por comas)</label>
+          <input type="text" id="es-resources" value="${space.resources.join(", ")}" />
+        </div>
+        <div class="field">
+          <label for="es-desc">Descripción</label>
+          <input type="text" id="es-desc" value="${space.description || ""}" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Guardar cambios</button>
+      </form>`
+    );
+
+    document.getElementById("edit-space-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await apiFetch(`/api/spaces/${spaceId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            name: document.getElementById("es-name").value.trim(),
+            building: document.getElementById("es-building").value.trim(),
+            floor: Number(document.getElementById("es-floor").value),
+            capacity: Number(document.getElementById("es-capacity").value),
+            status: document.getElementById("es-status").value,
+            resources: document
+              .getElementById("es-resources")
+              .value.split(",")
+              .map((r) => r.trim())
+              .filter(Boolean),
+            description: document.getElementById("es-desc").value.trim(),
+          }),
+        });
+        closeModal();
+        showToast("Espacio actualizado.");
+        await loadSpaces();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+/* ==================== RESERVACIONES ==================== */
 function renderReservations() {
   const container = document.getElementById("reservations-list");
   const filtered = state.reservations.filter((r) =>
@@ -205,13 +368,18 @@ function renderReservations() {
   );
 
   if (!filtered.length) {
-    container.innerHTML = '<p class="empty-hint">No hay reservaciones en esta vista. Usa el formulario lateral para crear una.</p>';
+    container.innerHTML =
+      '<p class="empty-hint">No hay reservaciones en esta vista. Usa el formulario lateral para crear una.</p>';
     return;
   }
 
+  const admin = isAdmin();
+  const currentUserId = state.user ? state.user.id : null;
+
   container.innerHTML = filtered
-    .map(
-      (r) => `
+    .map((r) => {
+      const canManage = admin || r.user_id === currentUserId;
+      return `
       <article class="res-row">
         <div class="res-row-main">
           <div class="res-row-title">
@@ -225,26 +393,114 @@ function renderReservations() {
         </div>
         <div class="res-row-actions">
           ${
-            r.status === "CONFIRMED"
-              ? `<button type="button" class="btn btn-danger-subtle" data-cancel-id="${r.id}">Cancelar</button>`
+            r.status === "CONFIRMED" && canManage
+              ? `<button type="button" class="btn btn-outline btn-sm" data-edit-res="${r.id}">Editar</button>
+                 <button type="button" class="btn btn-danger-subtle" data-cancel-id="${r.id}">Cancelar</button>`
+              : ""
+          }
+          ${
+            admin
+              ? `<button type="button" class="btn btn-ghost btn-sm" data-delete-res="${r.id}">Eliminar</button>`
               : ""
           }
         </div>
-      </article>`
-    )
+      </article>`;
+    })
     .join("");
 
+  container.querySelectorAll("[data-edit-res]").forEach((btn) => {
+    btn.addEventListener("click", () => openEditReservationModal(Number(btn.dataset.editRes)));
+  });
   container.querySelectorAll("[data-cancel-id]").forEach((btn) => {
     btn.addEventListener("click", () => handleCancelReservation(Number(btn.dataset.cancelId), btn));
   });
+  container.querySelectorAll("[data-delete-res]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.dataset.deleteRes);
+      if (!confirm(`¿Eliminar permanentemente la reservación #${id}?`)) return;
+      setButtonLoading(btn, true, "...");
+      try {
+        await apiFetch(`/api/reservations/${id}`, { method: "DELETE" });
+        showToast(`Reservación #${id} eliminada.`);
+        await loadReservations();
+      } catch (err) {
+        showToast(err.message, "error");
+        setButtonLoading(btn, false);
+      }
+    });
+  });
+}
+
+async function openEditReservationModal(resId) {
+  try {
+    const { data: r } = await apiFetch(`/api/reservations/${resId}`);
+    openModal(
+      `Editar reservación #${r.id}`,
+      `<form id="edit-res-form" class="stack-form">
+        <div class="field">
+          <label for="er-title">Título</label>
+          <input type="text" id="er-title" required minlength="3" value="${r.title}" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="er-date">Fecha</label>
+            <input type="date" id="er-date" required value="${r.reservation_date}" />
+          </div>
+          <div class="field">
+            <label for="er-attendees">Asistentes</label>
+            <input type="number" id="er-attendees" min="1" max="500" required value="${r.attendees}" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="er-start">Inicio</label>
+            <input type="time" id="er-start" required value="${r.start_time}" />
+          </div>
+          <div class="field">
+            <label for="er-end">Fin</label>
+            <input type="time" id="er-end" required value="${r.end_time}" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="er-notes">Notas</label>
+          <input type="text" id="er-notes" value="${r.notes || ""}" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Guardar cambios</button>
+      </form>`
+    );
+
+    document.getElementById("edit-res-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const { data: updated, elapsed } = await apiFetch(`/api/reservations/${resId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            title: document.getElementById("er-title").value.trim(),
+            reservation_date: document.getElementById("er-date").value,
+            start_time: document.getElementById("er-start").value,
+            end_time: document.getElementById("er-end").value,
+            attendees: Number(document.getElementById("er-attendees").value),
+            notes: document.getElementById("er-notes").value.trim(),
+          }),
+        });
+        closeModal();
+        renderTrace(updated.soa_trace, updated.confirmation_code, elapsed);
+        showToast(`Reservación #${resId} actualizada.`);
+        state.loadedViews.delete("view-notifications");
+        await loadReservations();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 }
 
 function renderTrace(steps, confirmationCode = "", elapsedMs = null) {
   const box = document.getElementById("soa-trace-box");
   const durationEl = document.getElementById("trace-duration");
-  if (elapsedMs !== null) {
-    durationEl.textContent = `${elapsedMs} ms`;
-  }
+  if (elapsedMs !== null) durationEl.textContent = `${elapsedMs} ms`;
   if (!steps || !steps.length) {
     box.innerHTML = '<p class="empty-hint">Sin pasos registrados.</p>';
     return;
@@ -269,6 +525,279 @@ function renderTrace(steps, confirmationCode = "", elapsedMs = null) {
       .join("");
 }
 
+/* ==================== USUARIOS Y PERFIL ==================== */
+function renderMyProfile(profile) {
+  const box = document.getElementById("my-profile-box");
+  box.innerHTML = `
+    <div class="profile-stat"><span>Nombre completo</span><strong>${profile.full_name}</strong></div>
+    <div class="profile-stat"><span>Correo corporativo</span><strong>${profile.email}</strong></div>
+    <div class="profile-stat"><span>Departamento</span><strong>${profile.department}</strong></div>
+    <div class="profile-stat"><span>Rol asignado</span><strong>${profile.role}</strong></div>
+    <div class="profile-stat"><span>Estado de cuenta</span><div>${statusBadge(profile.is_active ? "active" : "inactive")}</div></div>
+  `;
+}
+
+function populateAdminBookingUsers() {
+  const field = document.getElementById("admin-res-user-field");
+  const select = document.getElementById("res-user-id");
+  if (!isAdmin() || !state.users.length) {
+    field.classList.add("hidden");
+    return;
+  }
+  field.classList.remove("hidden");
+  const activeUsers = state.users.filter((u) => u.is_active);
+  select.innerHTML = activeUsers
+    .map(
+      (u) =>
+        `<option value="${u.id}" ${u.id === state.user.id ? "selected" : ""}>${u.full_name} (${u.department})</option>`
+    )
+    .join("");
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById("users-tbody");
+  if (!state.users.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-hint">No hay usuarios registrados.</td></tr>';
+    return;
+  }
+  const admin = isAdmin();
+  const myId = state.user ? state.user.id : null;
+
+  tbody.innerHTML = state.users
+    .map(
+      (u) => `
+      <tr>
+        <td>#${u.id}</td>
+        <td><strong>${u.full_name}</strong><br /><span class="muted-text">${u.email}</span></td>
+        <td>${u.department}</td>
+        <td><span class="role-chip">${u.role}</span></td>
+        <td>${statusBadge(u.is_active ? "active" : "inactive")}</td>
+        <td>
+          <div class="table-actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-view-user="${u.id}">Ver</button>
+            ${
+              admin
+                ? `<button type="button" class="btn btn-outline btn-sm" data-edit-user="${u.id}">Editar</button>
+                   ${
+                     u.id !== myId
+                       ? `<button type="button" class="btn btn-danger-subtle" data-delete-user="${u.id}">Eliminar</button>`
+                       : ""
+                   }`
+                : ""
+            }
+          </div>
+        </td>
+      </tr>`
+    )
+    .join("");
+
+  tbody.querySelectorAll("[data-view-user]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        const { data: u } = await apiFetch(`/api/users/${btn.dataset.viewUser}`);
+        openModal(
+          `Perfil de ${u.full_name}`,
+          `<div class="receipt-box">
+            <div><strong>ID:</strong> #${u.id}</div>
+            <div><strong>Correo:</strong> ${u.email}</div>
+            <div><strong>Departamento:</strong> ${u.department}</div>
+            <div><strong>Rol:</strong> ${u.role}</div>
+            <div><strong>Estado:</strong> ${u.is_active ? "Activo" : "Inactivo"}</div>
+            <div class="muted-text">Registrado: ${u.created_at}</div>
+          </div>`
+        );
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+
+  if (admin) {
+    tbody.querySelectorAll("[data-edit-user]").forEach((btn) => {
+      btn.addEventListener("click", () => openEditUserModal(Number(btn.dataset.editUser)));
+    });
+    tbody.querySelectorAll("[data-delete-user]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = Number(btn.dataset.deleteUser);
+        if (!confirm(`¿Eliminar permanentemente al usuario #${id}?`)) return;
+        setButtonLoading(btn, true, "...");
+        try {
+          await apiFetch(`/api/users/${id}`, { method: "DELETE" });
+          showToast(`Usuario #${id} eliminado.`);
+          await loadUsers();
+        } catch (err) {
+          showToast(err.message, "error");
+          setButtonLoading(btn, false);
+        }
+      });
+    });
+  }
+}
+
+async function openEditUserModal(userId) {
+  try {
+    const { data: u } = await apiFetch(`/api/users/${userId}`);
+    openModal(
+      `Editar usuario #${u.id}`,
+      `<form id="edit-user-form" class="stack-form">
+        <div class="field">
+          <label for="eu-name">Nombre completo</label>
+          <input type="text" id="eu-name" required minlength="3" value="${u.full_name}" />
+        </div>
+        <div class="field">
+          <label for="eu-dept">Departamento</label>
+          <input type="text" id="eu-dept" required value="${u.department}" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="eu-role">Rol</label>
+            <select id="eu-role">
+              <option value="employee" ${u.role === "employee" ? "selected" : ""}>Empleado</option>
+              <option value="admin" ${u.role === "admin" ? "selected" : ""}>Administrador</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="eu-active">Estado</label>
+            <select id="eu-active">
+              <option value="true" ${u.is_active ? "selected" : ""}>Activo</option>
+              <option value="false" ${!u.is_active ? "selected" : ""}>Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Guardar cambios</button>
+      </form>`
+    );
+
+    document.getElementById("edit-user-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await apiFetch(`/api/users/${userId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            full_name: document.getElementById("eu-name").value.trim(),
+            department: document.getElementById("eu-dept").value.trim(),
+            role: document.getElementById("eu-role").value,
+            is_active: document.getElementById("eu-active").value === "true",
+          }),
+        });
+        closeModal();
+        showToast("Usuario actualizado.");
+        await loadUsers();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+/* ==================== COMPROBANTES / NOTIFICACIONES ==================== */
+function renderNotificationsTable() {
+  const tbody = document.getElementById("notifications-tbody");
+  const filtered = state.notifications.filter((n) =>
+    state.notifFilter === "ALL" ? true : n.event_type === state.notifFilter
+  );
+
+  if (!filtered.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="7" class="empty-hint">No hay comprobantes en esta categoría.</td></tr>';
+    return;
+  }
+
+  const eventLabels = {
+    RESERVATION_CONFIRMED: "Confirmación",
+    RESERVATION_UPDATED: "Actualización",
+    RESERVATION_CANCELLED: "Cancelación",
+  };
+  const admin = isAdmin();
+
+  tbody.innerHTML = filtered
+    .map(
+      (n) => `
+      <tr>
+        <td><span class="mono-inline">${n.confirmation_code}</span></td>
+        <td>#${n.reservation_id}</td>
+        <td>${eventLabels[n.event_type] || n.event_type}</td>
+        <td>${n.recipient_name}<br /><span class="muted-text">${n.recipient_email}</span></td>
+        <td>${n.subject}</td>
+        <td>${statusBadge(n.status)}</td>
+        <td>
+          <div class="table-actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-view-notif="${n.id}">Ver</button>
+            ${
+              n.status !== "READ"
+                ? `<button type="button" class="btn btn-outline btn-sm" data-read-notif="${n.id}">Marcar leído</button>`
+                : ""
+            }
+            ${
+              admin
+                ? `<button type="button" class="btn btn-danger-subtle" data-delete-notif="${n.id}">Eliminar</button>`
+                : ""
+            }
+          </div>
+        </td>
+      </tr>`
+    )
+    .join("");
+
+  tbody.querySelectorAll("[data-view-notif]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        const { data: n } = await apiFetch(`/api/notifications/${btn.dataset.viewNotif}`);
+        openModal(
+          `Comprobante ${n.confirmation_code}`,
+          `<div class="receipt-box">
+            <div><strong>Asunto:</strong> ${n.subject}</div>
+            <div><strong>Destinatario:</strong> ${n.recipient_name} (${n.recipient_email})</div>
+            <div><strong>Reserva asociada:</strong> #${n.reservation_id} · Canal: ${n.channel}</div>
+            <div class="receipt-message">${n.message}</div>
+            <div class="muted-text">Emitido: ${n.created_at}</div>
+          </div>`
+        );
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+
+  tbody.querySelectorAll("[data-read-notif]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      setButtonLoading(btn, true, "...");
+      try {
+        await apiFetch(`/api/notifications/${btn.dataset.readNotif}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "READ" }),
+        });
+        showToast("Comprobante marcado como leído.");
+        await loadNotifications();
+      } catch (err) {
+        showToast(err.message, "error");
+        setButtonLoading(btn, false);
+      }
+    });
+  });
+
+  if (admin) {
+    tbody.querySelectorAll("[data-delete-notif]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = Number(btn.dataset.deleteNotif);
+        if (!confirm("¿Eliminar este comprobante del historial?")) return;
+        setButtonLoading(btn, true, "...");
+        try {
+          await apiFetch(`/api/notifications/${id}`, { method: "DELETE" });
+          showToast("Comprobante eliminado.");
+          await loadNotifications();
+        } catch (err) {
+          showToast(err.message, "error");
+          setButtonLoading(btn, false);
+        }
+      });
+    });
+  }
+}
+
+/* ==================== CARGA DE DATOS ==================== */
 async function loadSpaces() {
   const { data } = await apiFetch("/api/spaces");
   state.spaces = data;
@@ -282,32 +811,22 @@ async function loadReservations() {
   renderReservations();
 }
 
+async function loadUsers() {
+  const onlyActive = document.getElementById("users-only-active")?.checked || false;
+  const [{ data: me }, { data: list }] = await Promise.all([
+    apiFetch("/api/auth/me"),
+    apiFetch(`/api/users?only_active=${onlyActive}`),
+  ]);
+  state.users = list;
+  renderMyProfile(me);
+  renderUsersTable();
+  populateAdminBookingUsers();
+}
+
 async function loadNotifications() {
   const { data } = await apiFetch("/api/notifications");
-  document.getElementById("notifs-count-label").textContent = `${data.length} registros`;
-  const tbody = document.getElementById("notifications-tbody");
-  if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-hint">Aún no se han emitido comprobantes.</td></tr>';
-    return;
-  }
-  const eventLabels = {
-    RESERVATION_CONFIRMED: "Confirmación",
-    RESERVATION_UPDATED: "Actualización",
-    RESERVATION_CANCELLED: "Cancelación",
-  };
-  tbody.innerHTML = data
-    .map(
-      (n) => `
-      <tr>
-        <td><span class="mono-inline">${n.confirmation_code}</span></td>
-        <td>#${n.reservation_id}</td>
-        <td>${eventLabels[n.event_type] || n.event_type}</td>
-        <td>${n.recipient_name}<br /><span class="muted-text">${n.recipient_email}</span></td>
-        <td>${n.subject}</td>
-        <td>${statusBadge(n.status)}</td>
-      </tr>`
-    )
-    .join("");
+  state.notifications = data;
+  renderNotificationsTable();
 }
 
 async function loadCatalog() {
@@ -342,9 +861,20 @@ async function loadCatalog() {
 async function refreshActiveView() {
   try {
     if (state.activeView === "view-reservations") {
-      await Promise.all([loadSpaces(), loadReservations()]);
+      const jobs = [loadSpaces(), loadReservations()];
+      if (isAdmin() && !state.users.length) {
+        jobs.push(
+          apiFetch("/api/users?only_active=true").then(({ data }) => {
+            state.users = data;
+            populateAdminBookingUsers();
+          })
+        );
+      }
+      await Promise.all(jobs);
     } else if (state.activeView === "view-spaces") {
       await loadSpaces();
+    } else if (state.activeView === "view-users") {
+      await loadUsers();
     } else if (state.activeView === "view-notifications") {
       await loadNotifications();
     } else if (state.activeView === "view-catalog") {
@@ -377,6 +907,7 @@ function switchView(viewId) {
 function logoutUser(notice = "") {
   state.token = null;
   state.user = null;
+  state.users = [];
   state.loadedViews.clear();
   localStorage.removeItem("reservasoa_token");
   localStorage.removeItem("reservasoa_user");
@@ -393,8 +924,9 @@ function renderSession() {
     document.getElementById("session-role").textContent = state.user.role;
     document.getElementById("user-avatar").textContent = getInitials(state.user.full_name);
 
-    const adminPanel = document.getElementById("admin-space-panel");
-    adminPanel.classList.toggle("hidden", state.user.role !== "admin");
+    const admin = isAdmin();
+    document.getElementById("admin-space-panel").classList.toggle("hidden", !admin);
+    document.getElementById("admin-user-panel").classList.toggle("hidden", !admin);
     refreshActiveView();
   } else {
     authShell.classList.remove("hidden");
@@ -433,7 +965,7 @@ async function handleCancelReservation(id, btn) {
   }
 }
 
-/* ---------- Eventos ---------- */
+/* ==================== EVENTOS ==================== */
 document.querySelectorAll(".auth-switch").forEach((btn) => {
   btn.addEventListener("click", () => {
     const mode = btn.dataset.authMode;
@@ -507,6 +1039,7 @@ document.getElementById("btn-demo-emp").addEventListener("click", () => {
 });
 
 document.getElementById("btn-logout").addEventListener("click", () => logoutUser());
+document.getElementById("btn-sidebar-profile").addEventListener("click", () => switchView("view-users"));
 
 document.querySelectorAll(".nav-item").forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
@@ -516,7 +1049,23 @@ document.getElementById("btn-refresh-active").addEventListener("click", refreshA
 
 document.getElementById("res-space").addEventListener("change", (e) => {
   state.selectedSpaceId = Number(e.target.value);
+  document.getElementById("space-validation-box").classList.add("hidden");
   renderRoomPicker();
+});
+
+document.getElementById("btn-validate-space").addEventListener("click", async () => {
+  const spaceId = Number(document.getElementById("res-space").value);
+  const attendees = Number(document.getElementById("res-attendees").value) || 1;
+  const box = document.getElementById("space-validation-box");
+  if (!spaceId) return;
+  try {
+    const { data } = await apiFetch(`/api/spaces/${spaceId}/validate?attendees=${attendees}`);
+    box.textContent = data.reason;
+    box.className = `validation-box ${data.valid ? "valid" : "invalid"}`;
+  } catch (err) {
+    box.textContent = err.message;
+    box.className = "validation-box invalid";
+  }
 });
 
 document.querySelectorAll("[data-res-filter]").forEach((btn) => {
@@ -528,8 +1077,21 @@ document.querySelectorAll("[data-res-filter]").forEach((btn) => {
   });
 });
 
+document.querySelectorAll("[data-notif-filter]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    state.notifFilter = btn.dataset.notifFilter;
+    document.querySelectorAll("[data-notif-filter]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderNotificationsTable();
+  });
+});
+
 document.getElementById("space-search").addEventListener("input", (e) => {
   renderSpacesCatalog(e.target.value);
+});
+
+document.getElementById("users-only-active").addEventListener("change", () => {
+  loadUsers().catch((err) => showToast(err.message, "error"));
 });
 
 document.getElementById("reservation-form").addEventListener("submit", async (e) => {
@@ -537,22 +1099,28 @@ document.getElementById("reservation-form").addEventListener("submit", async (e)
   const btn = document.getElementById("btn-reserve-submit");
   setButtonLoading(btn, true, "Validando servicios...");
   try {
+    const body = {
+      space_id: Number(document.getElementById("res-space").value),
+      title: document.getElementById("res-title").value.trim(),
+      reservation_date: document.getElementById("res-date").value,
+      start_time: document.getElementById("res-start").value,
+      end_time: document.getElementById("res-end").value,
+      attendees: Number(document.getElementById("res-attendees").value),
+      notes: document.getElementById("res-notes").value.trim(),
+    };
+    if (isAdmin()) {
+      const selectedUserId = Number(document.getElementById("res-user-id").value);
+      if (selectedUserId) body.user_id = selectedUserId;
+    }
     const { data, elapsed } = await apiFetch("/api/reservations", {
       method: "POST",
-      body: JSON.stringify({
-        space_id: Number(document.getElementById("res-space").value),
-        title: document.getElementById("res-title").value.trim(),
-        reservation_date: document.getElementById("res-date").value,
-        start_time: document.getElementById("res-start").value,
-        end_time: document.getElementById("res-end").value,
-        attendees: Number(document.getElementById("res-attendees").value),
-        notes: document.getElementById("res-notes").value.trim(),
-      }),
+      body: JSON.stringify(body),
     });
     renderTrace(data.soa_trace, data.confirmation_code, elapsed);
     showToast(`Reservación confirmada (${data.confirmation_code}).`);
     document.getElementById("res-title").value = "";
     document.getElementById("res-notes").value = "";
+    document.getElementById("space-validation-box").classList.add("hidden");
     state.loadedViews.delete("view-notifications");
     await loadReservations();
   } catch (err) {
@@ -581,11 +1149,37 @@ document.getElementById("space-form").addEventListener("submit", async (e) => {
         floor: Number(document.getElementById("sp-floor").value),
         capacity: Number(document.getElementById("sp-capacity").value),
         resources,
+        description: document.getElementById("sp-description").value.trim(),
       }),
     });
     showToast("Espacio agregado al catálogo.");
     e.target.reset();
     await loadSpaces();
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    setButtonLoading(btn, false);
+  }
+});
+
+document.getElementById("admin-user-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btn-user-submit");
+  setButtonLoading(btn, true, "Creando...");
+  try {
+    await apiFetch("/api/users", {
+      method: "POST",
+      body: JSON.stringify({
+        full_name: document.getElementById("u-name").value.trim(),
+        email: document.getElementById("u-email").value.trim(),
+        department: document.getElementById("u-dept").value.trim(),
+        role: document.getElementById("u-role").value,
+        password: document.getElementById("u-password").value,
+      }),
+    });
+    showToast("Usuario creado en users-service.");
+    e.target.reset();
+    await loadUsers();
   } catch (err) {
     showToast(err.message, "error");
   } finally {
