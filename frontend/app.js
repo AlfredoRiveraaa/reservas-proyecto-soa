@@ -23,11 +23,11 @@ const VIEW_META = {
   },
   "view-users": {
     title: "Usuarios y perfil",
-    subtitle: "Consulta tu perfil JWT y administra el directorio de colaboradores en users-service.",
+    subtitle: "Consulta tu perfil y administra el directorio de colaboradores.",
   },
   "view-notifications": {
     title: "Comprobantes",
-    subtitle: "Historial de folios de confirmación, actualización y cancelación en notifications-service.",
+    subtitle: "Historial de folios de confirmación, actualización y cancelación.",
   },
   "view-catalog": {
     title: "Servicios SOA",
@@ -120,7 +120,7 @@ function getInitials(name = "") {
       .filter(Boolean)
       .slice(0, 2)
       .map((part) => part[0].toUpperCase())
-      .join("") || "EH"
+      .join("") || "NS"
   );
 }
 
@@ -1029,12 +1029,12 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
 });
 
 document.getElementById("btn-demo-admin").addEventListener("click", () => {
-  document.getElementById("login-email").value = "admin@espaciohub.com";
+  document.getElementById("login-email").value = "admin@nexosalas.com";
   document.getElementById("login-password").value = "Admin123!";
 });
 
 document.getElementById("btn-demo-emp").addEventListener("click", () => {
-  document.getElementById("login-email").value = "ana.lopez@espaciohub.com";
+  document.getElementById("login-email").value = "ana.lopez@nexosalas.com";
   document.getElementById("login-password").value = "Ana12345";
 });
 
@@ -1177,7 +1177,7 @@ document.getElementById("admin-user-form").addEventListener("submit", async (e) 
         password: document.getElementById("u-password").value,
       }),
     });
-    showToast("Usuario creado en users-service.");
+    showToast("Usuario creado correctamente.");
     e.target.reset();
     await loadUsers();
   } catch (err) {

@@ -20,22 +20,22 @@ def main() -> None:
 
     users = [
         {
-            "full_name": "Administrador EspacioHub",
-            "email": "admin@espaciohub.com",
+            "full_name": "Administrador NexoSalas",
+            "email": "admin@nexosalas.com",
             "department": "Operaciones TI",
             "password": "Admin123!",
             "role": "admin",
         },
         {
             "full_name": "Ana López Morales",
-            "email": "ana.lopez@espaciohub.com",
+            "email": "ana.lopez@nexosalas.com",
             "department": "Ingeniería de Software",
             "password": "Ana12345",
             "role": "employee",
         },
         {
             "full_name": "Carlos Méndez Ruiz",
-            "email": "carlos.mendez@espaciohub.com",
+            "email": "carlos.mendez@nexosalas.com",
             "department": "Diseño de Producto",
             "password": "Carlos123",
             "role": "employee",
@@ -65,7 +65,7 @@ def main() -> None:
         },
         {
             "code": "AUD-01",
-            "name": "Auditorio EspacioHub",
+            "name": "Auditorio NexoSalas",
             "building": "Torre Innovación",
             "floor": 1,
             "capacity": 80,
@@ -108,7 +108,7 @@ def main() -> None:
 
         login_resp = client.post(
             f"{base}/api/auth/login",
-            json={"email": "admin@espaciohub.com", "password": "Admin123!"},
+            json={"email": "admin@nexosalas.com", "password": "Admin123!"},
         )
         login_resp.raise_for_status()
         admin_token = login_resp.json()["access_token"]

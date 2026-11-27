@@ -264,7 +264,7 @@ components:
           format: email
           title: Email
           examples:
-          - admin@espaciohub.com
+          - admin@nexosalas.com
         password:
           type: string
           maxLength: 72
@@ -307,7 +307,7 @@ components:
           format: email
           title: Email
           examples:
-          - ana.lopez@espaciohub.com
+          - ana.lopez@nexosalas.com
         department:
           type: string
           maxLength: 60

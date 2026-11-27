@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EspacioHub — ReservaSOA</title>
+  <title>NexoSalas — ReservaSOA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/styles.css?v=3" />
+  <link rel="stylesheet" href="/static/styles.css?v=4" />
 </head>
 <body>
   <!-- Notificaciones flotantes -->
@@ -26,7 +26,7 @@
 
   <!-- VISTA 1: AUTENTICACIÓN -->
   <div id="auth-shell" class="auth-shell">
-    <section class="auth-visual" aria-label="Información de EspacioHub">
+    <section class="auth-visual" aria-label="Información de NexoSalas">
       <div class="auth-visual-inner">
         <div class="brand-mark brand-mark--light">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -35,7 +35,7 @@
             <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="2" />
             <path d="M13 17H21M17 13V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
-          <span>EspacioHub</span>
+          <span>NexoSalas</span>
         </div>
 
         <div class="auth-hero-copy">
@@ -78,7 +78,7 @@
 
           <div class="field">
             <label for="login-email">Correo electrónico</label>
-            <input type="email" id="login-email" autocomplete="email" required placeholder="nombre@espaciohub.com" />
+            <input type="email" id="login-email" autocomplete="email" required placeholder="nombre@nexosalas.com" />
           </div>
 
           <div class="field">
@@ -111,7 +111,7 @@
           <div class="field-row">
             <div class="field">
               <label for="reg-email">Correo electrónico</label>
-              <input type="email" id="reg-email" required placeholder="maria@espaciohub.com" />
+              <input type="email" id="reg-email" required placeholder="maria@nexosalas.com" />
             </div>
             <div class="field">
               <label for="reg-dept">Departamento</label>
@@ -142,7 +142,7 @@
             <path d="M13 17H21M17 13V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
           <div>
-            <strong>EspacioHub</strong>
+            <strong>NexoSalas</strong>
             <span class="brand-sub">ReservaSOA</span>
           </div>
         </div>
@@ -374,7 +374,6 @@
         <div class="panel">
           <div class="panel-head">
             <h2>Mi perfil autenticado</h2>
-            <span class="mono-meta">GET /api/auth/me</span>
           </div>
           <div id="my-profile-box" class="profile-grid"></div>
         </div>
@@ -382,7 +381,7 @@
         <div id="admin-user-panel" class="panel hidden">
           <div class="panel-head">
             <h2>Dar de alta nuevo usuario</h2>
-            <span class="muted-text">POST /api/users (Solo administrador)</span>
+            <span class="muted-text">Acceso exclusivo de administrador</span>
           </div>
           <form id="admin-user-form" class="grid-form">
             <div class="field">
@@ -391,7 +390,7 @@
             </div>
             <div class="field">
               <label for="u-email">Correo electrónico</label>
-              <input type="email" id="u-email" required placeholder="laura@espaciohub.com" />
+              <input type="email" id="u-email" required placeholder="laura@nexosalas.com" />
             </div>
             <div class="field">
               <label for="u-dept">Departamento</label>
@@ -487,6 +486,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js?v=3"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
 </html>

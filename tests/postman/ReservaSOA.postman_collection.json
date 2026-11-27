@@ -38,7 +38,7 @@
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"admin@espaciohub.com\",\n  \"password\": \"Admin123!\"\n}"
+          "raw": "{\n  \"email\": \"admin@nexosalas.com\",\n  \"password\": \"Admin123!\"\n}"
         },
         "url": "{{gateway_url}}/api/auth/login"
       }

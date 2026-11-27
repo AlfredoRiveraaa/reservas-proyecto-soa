@@ -163,7 +163,7 @@ def build_document() -> None:
     # ================= 1. PROBLEMA Y CONTEXTO =================
     _add_heading_styled(doc, "1. Problema y Contexto Organizacional", level=1)
     doc.add_paragraph(
-        "EspacioHub es un centro corporativo y de innovación que administra salas de juntas, "
+        "NexoSalas es un centro corporativo y de innovación que administra salas de juntas, "
         "auditorios, laboratorios de prototipos y equipamiento audiovisual compartido entre "
         "múltiples departamentos (Ingeniería, Operaciones, Diseño y Dirección). Actualmente, "
         "la operación se apoya en herramientas aisladas: Recursos Humanos mantiene el directorio "

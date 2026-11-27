@@ -16,7 +16,7 @@ def test_users_crud_and_auth_flow(soa_env):
     # Perfil actual con JWT
     me = client.get("/auth/me", headers=emp_headers)
     assert me.status_code == 200
-    assert me.json()["email"] == "ana@espaciohub.com"
+    assert me.json()["email"] == "ana@nexosalas.com"
 
     # Crear usuario por admin
     created = client.post(
@@ -24,7 +24,7 @@ def test_users_crud_and_auth_flow(soa_env):
         headers=admin_headers,
         json={
             "full_name": "Carlos Méndez",
-            "email": "carlos@espaciohub.com",
+            "email": "carlos@nexosalas.com",
             "department": "Producto",
             "password": "Carlos123",
             "role": "employee",
@@ -55,7 +55,7 @@ def test_users_crud_and_auth_flow(soa_env):
     # Usuario inactivo no puede iniciar sesión
     login_inactive = client.post(
         "/auth/login",
-        json={"email": "carlos@espaciohub.com", "password": "Carlos123"},
+        json={"email": "carlos@nexosalas.com", "password": "Carlos123"},
     )
     assert login_inactive.status_code == 403
 
@@ -78,7 +78,7 @@ def test_users_security_and_validation_errors(soa_env):
         headers=emp_headers,
         json={
             "full_name": "Sin Permiso",
-            "email": "no@espaciohub.com",
+            "email": "no@nexosalas.com",
             "department": "Ventas",
             "password": "Password123",
         },
@@ -90,7 +90,7 @@ def test_users_security_and_validation_errors(soa_env):
         "/auth/register",
         json={
             "full_name": "Duplicado",
-            "email": "ana@espaciohub.com",
+            "email": "ana@nexosalas.com",
             "department": "Ingeniería",
             "password": "Password123",
         },

@@ -11,7 +11,7 @@ UserRole = Literal["admin", "employee"]
 
 class UserCreate(BaseModel):
     full_name: str = Field(..., min_length=3, max_length=100, examples=["Ana López"])
-    email: EmailStr = Field(..., examples=["ana.lopez@espaciohub.com"])
+    email: EmailStr = Field(..., examples=["ana.lopez@nexosalas.com"])
     department: str = Field(..., min_length=2, max_length=60, examples=["Ingeniería"])
     password: str = Field(..., min_length=6, max_length=72, examples=["ClaveSegura123"])
     role: UserRole = Field(default="employee")
@@ -36,7 +36,7 @@ class UserResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr = Field(..., examples=["admin@espaciohub.com"])
+    email: EmailStr = Field(..., examples=["admin@nexosalas.com"])
     password: str = Field(..., min_length=6, max_length=72, examples=["Admin123!"])
 
 
