@@ -29,3 +29,7 @@ data/
 .DS_Store
 Thumbs.db
 *.log
+
+#skills
+.agents/
+skills-lock.json
